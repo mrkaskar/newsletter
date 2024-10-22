@@ -1,10 +1,16 @@
-use std::net::TcpListener;
-
 use sqlx::PgPool;
-use ztp::{configuration::get_configuration, startup::run};
+use std::net::TcpListener;
+use ztp::{
+    configuration::get_configuration,
+    startup::run,
+    telemetry::{get_subscriber, init_subscriber},
+};
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
+    let subscriber = get_subscriber("ztp".into(), "info".into(), std::io::stdout);
+    init_subscriber(subscriber);
+
     let configuration = get_configuration().expect("Failed to read configuration.");
     let connection_pool = PgPool::connect(&configuration.database.connection_string())
         .await
