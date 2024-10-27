@@ -214,7 +214,7 @@ mod tests {
         // Arrange
         let mock_server = MockServer::start().await;
         let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let timeout = std::time::Duration::from_millis(10001);
+        let timeout = std::time::Duration::from_millis(200);
         let email_client = EmailClient::new(
             mock_server.uri(),
             sender,

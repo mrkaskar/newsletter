@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use secrecy::{ExposeSecret, SecretBox};
 use serde_aux::field_attributes::deserialize_number_from_string;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
@@ -7,7 +5,7 @@ use sqlx::ConnectOptions;
 
 use crate::domain::SubscriberEmail;
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct Settings {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
@@ -22,6 +20,19 @@ pub struct EmailClientSettings {
     pub timeout_milliseconds: u64,
 }
 
+impl Clone for EmailClientSettings {
+    fn clone(&self) -> Self {
+        Self {
+            base_url: self.base_url.clone(),
+            sender_email: self.sender_email.clone(),
+            authorization_token: SecretBox::new(Box::new(
+                self.authorization_token.expose_secret().clone(),
+            )),
+            timeout_milliseconds: self.timeout_milliseconds.clone(),
+        }
+    }
+}
+
 impl EmailClientSettings {
     pub fn timeout(&self) -> std::time::Duration {
         std::time::Duration::from_millis(self.timeout_milliseconds)
@@ -32,7 +43,7 @@ impl EmailClientSettings {
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct ApplicationSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
@@ -48,6 +59,19 @@ pub struct DatabaseSettings {
     pub host: String,
     pub database_name: String,
     pub require_ssl: bool,
+}
+
+impl Clone for DatabaseSettings {
+    fn clone(&self) -> Self {
+        Self {
+            username: self.username.clone(),
+            password: SecretBox::new(Box::new(self.password.expose_secret().clone())),
+            port: self.port.clone(),
+            host: self.host.clone(),
+            database_name: self.database_name.clone(),
+            require_ssl: self.require_ssl.clone(),
+        }
+    }
 }
 
 impl DatabaseSettings {
