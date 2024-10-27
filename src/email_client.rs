@@ -1,7 +1,6 @@
+use crate::domain::SubscriberEmail;
 use reqwest::Client;
 use secrecy::{ExposeSecret, SecretBox};
-
-use crate::domain::SubscriberEmail;
 
 pub struct EmailClient {
     http_client: reqwest::Client,
@@ -15,11 +14,9 @@ impl EmailClient {
         base_url: String,
         sender: SubscriberEmail,
         authorization_token: SecretBox<String>,
+        timeout: std::time::Duration,
     ) -> Result<EmailClient, String> {
-        let http_client = Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
-            .build()
-            .unwrap();
+        let http_client = Client::builder().timeout(timeout).build().unwrap();
         Ok(Self {
             http_client,
             base_url,
@@ -116,17 +113,27 @@ mod tests {
         SubscriberEmail::parse(SafeEmail().fake()).unwrap()
     }
     fn email_client(base_url: String) -> EmailClient {
-        EmailClient::new(base_url, email(), SecretBox::new(Faker.fake()))
-            .expect("Failed to create email client")
+        EmailClient::new(
+            base_url,
+            email(),
+            SecretBox::new(Faker.fake()),
+            std::time::Duration::from_millis(200),
+        )
+        .expect("Failed to create email client")
     }
 
     #[tokio::test]
     async fn send_email_sends_the_expected_request() {
         let mock_server = MockServer::start().await;
         let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let email_client =
-            EmailClient::new(mock_server.uri(), sender, SecretBox::new(Faker.fake()))
-                .expect("fail to create email client");
+        let timeout = std::time::Duration::from_millis(100);
+        let email_client = EmailClient::new(
+            mock_server.uri(),
+            sender,
+            SecretBox::new(Faker.fake()),
+            timeout,
+        )
+        .expect("fail to create email client");
 
         Mock::given(header_exists("X-Postmark-Server-Token"))
             .and(header("Content-Type", "application/json"))
@@ -151,9 +158,14 @@ mod tests {
         // Arrange
         let mock_server = MockServer::start().await;
         let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let email_client =
-            EmailClient::new(mock_server.uri(), sender, SecretBox::new(Faker.fake()))
-                .expect("fail to create email client");
+        let timeout = std::time::Duration::from_millis(100);
+        let email_client = EmailClient::new(
+            mock_server.uri(),
+            sender,
+            SecretBox::new(Faker.fake()),
+            timeout,
+        )
+        .expect("fail to create email client");
         Mock::given(any())
             .respond_with(ResponseTemplate::new(200))
             .expect(1)
@@ -175,9 +187,14 @@ mod tests {
         use claims::assert_err;
         let mock_server = MockServer::start().await;
         let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let email_client =
-            EmailClient::new(mock_server.uri(), sender, SecretBox::new(Faker.fake()))
-                .expect("fail to create email client");
+        let timeout = std::time::Duration::from_millis(100);
+        let email_client = EmailClient::new(
+            mock_server.uri(),
+            sender,
+            SecretBox::new(Faker.fake()),
+            timeout,
+        )
+        .expect("fail to create email client");
         Mock::given(any())
             // Not a 200 anymore!
             .respond_with(ResponseTemplate::new(500))
@@ -197,9 +214,14 @@ mod tests {
         // Arrange
         let mock_server = MockServer::start().await;
         let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let email_client =
-            EmailClient::new(mock_server.uri(), sender, SecretBox::new(Faker.fake()))
-                .expect("fail to create email client");
+        let timeout = std::time::Duration::from_millis(10001);
+        let email_client = EmailClient::new(
+            mock_server.uri(),
+            sender,
+            SecretBox::new(Faker.fake()),
+            timeout,
+        )
+        .expect("fail to create email client");
         let response = ResponseTemplate::new(200)
             // 3 minutes!
             .set_delay(std::time::Duration::from_secs(180));

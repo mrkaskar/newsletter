@@ -10,3 +10,4 @@ email_client:
   base_url: "https://api.postmarkapp.com"
   sender_email: "dipixox347@avzong.com"
   authorization_token: "secretauthtoken"
+  timeout_milliseconds: 10000

@@ -1,3 +1,4 @@
+use secrecy::{ExposeSecret, SecretBox};
 use sqlx::PgPool;
 use std::net::TcpListener;
 use ztp::{
@@ -19,11 +20,17 @@ async fn main() -> Result<(), std::io::Error> {
         .email_client
         .sender()
         .expect("Invalid sender email address");
-    let email_auth_token = configuration.email_client.authorization_token;
+    let email_auth_token = configuration
+        .email_client
+        .authorization_token
+        .expose_secret();
+
+    let timeout = configuration.email_client.timeout();
     let email_client = EmailClient::new(
         configuration.email_client.base_url,
         sender_email,
-        email_auth_token,
+        SecretBox::new(Box::new(email_auth_token.to_string())),
+        timeout,
     )
     .expect("Failed to create email client");
 

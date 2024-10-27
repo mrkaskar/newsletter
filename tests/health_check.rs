@@ -1,5 +1,6 @@
 use std::net::TcpListener;
 
+use secrecy::{ExposeSecret, SecretBox};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use ztp::{
@@ -89,11 +90,16 @@ async fn spawn_app() -> TestApp {
         .email_client
         .sender()
         .expect("Invalid sender email address");
-    let email_auth_token = configuration.email_client.authorization_token;
+    let email_auth_token = configuration
+        .email_client
+        .authorization_token
+        .expose_secret();
+    let timeout = configuration.email_client.timeout();
     let email_client = EmailClient::new(
         configuration.email_client.base_url,
         sender_email,
-        email_auth_token,
+        SecretBox::new(Box::new(email_auth_token.to_string())),
+        timeout,
     )
     .expect("Failed to create email client");
 
