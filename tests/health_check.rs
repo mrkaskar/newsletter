@@ -4,6 +4,7 @@ use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use ztp::{
     configuration::{get_configuration, DatabaseSettings},
+    email_client::EmailClient,
     telemetry::{get_subscriber, init_subscriber},
 };
 
@@ -84,8 +85,20 @@ async fn spawn_app() -> TestApp {
     configuration.database.database_name = Uuid::new_v4().to_string();
     let connection_pool = configure_database(&configuration.database).await;
 
-    let server =
-        ztp::startup::run(listener, connection_pool.clone()).expect("Failed to bind address");
+    let sender_email = configuration
+        .email_client
+        .sender()
+        .expect("Invalid sender email address");
+    let email_auth_token = configuration.email_client.authorization_token;
+    let email_client = EmailClient::new(
+        configuration.email_client.base_url,
+        sender_email,
+        email_auth_token,
+    )
+    .expect("Failed to create email client");
+
+    let server = ztp::startup::run(listener, connection_pool.clone(), email_client)
+        .expect("Failed to bind address");
     let _ = tokio::spawn(server);
 
     TestApp {
